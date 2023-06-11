@@ -36,6 +36,12 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_response(code=200)
         self.send_header(keyword='Content-Type', value='text/html')
         self.end_headers()
+        self.wfile.write(b'''<!DOCTYPE html>
+        <html>
+        <head><title>AI API landing page</title></head>
+        <body>This is just to confirm you've reached the server.</body>
+        </html>
+        ''')
 
     def do_GET(self):
         self.do_GET_HEAD(only_head=False)
