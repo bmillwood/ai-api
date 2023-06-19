@@ -12,10 +12,16 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             path = self.path
             query = ''
 
-        if path != '/uppercase':
-            self.send_error(code=404)
-            return
+        handlers = {
+            '/uppercase': self.uppercase,
+        }
 
+        try:
+            handlers[path]()
+        except KeyError:
+            self.send_error(code=404)
+
+    def uppercase(self):
         if self.headers['Content-Type'] != 'application/json':
             self.send_error(code=415)
             return
@@ -38,7 +44,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b'''<!DOCTYPE html>
         <html>
-        <head><title>AI API landing page</title></head>
+        <head><title>API landing page</title></head>
         <body>This is just to confirm you've reached the server.</body>
         </html>
         ''')

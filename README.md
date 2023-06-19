@@ -1,1 +1,1 @@
-A server for hosting my miscellaneous AI APIs.
+A server for hosting my miscellaneous APIs.
