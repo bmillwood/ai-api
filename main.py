@@ -42,6 +42,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_response(code=200)
         self.send_header(keyword='Content-Type', value='text/html')
         self.end_headers()
+
+        if only_head:
+            return
+
         self.wfile.write(b'''<!DOCTYPE html>
         <html>
         <head><title>API landing page</title></head>
