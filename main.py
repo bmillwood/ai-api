@@ -16,6 +16,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         else:
             return (self.path, '')
 
+    def read_content(self):
+        content_length = int(self.headers['Content-Length'])
+        return self.rfile.read(content_length)
+
     def do_POST(self):
         path, query = self.path_query()
 
@@ -52,11 +56,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(code=415)
             return
 
-        content_length = int(self.headers['Content-Length'])
-        body = json.loads(self.rfile.read(content_length))
+        body = json.loads(self.read_content())
         q = body['q']
         response_json = {'r': q.upper()}
-        response = json.dumps(response).encode('utf-8')
+        response = json.dumps(response_json).encode('utf-8')
 
         self.send_response(code=200)
         self.send_header(keyword='Content-Type', value='application/json')
