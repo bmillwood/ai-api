@@ -6,17 +6,23 @@ import os
 import subprocess
 import sys
 
+import pytesseract
+
 class RequestHandler(http.server.BaseHTTPRequestHandler):
-    def do_POST(self):
+    def path_query(self):
         if '?' in self.path:
             path, query = self.path.split('?', maxsplit=1)
+            return (path, query)
         else:
-            path = self.path
-            query = ''
+            return (self.path, '')
+
+    def do_POST(self):
+        path, query = self.path_query()
 
         handlers = {
-            '/selfupgrade': self.selfupgrade,
-            '/uppercase': self.uppercase,
+            '/selfupgrade': self.selfupgrade_POST,
+            '/tesseract': self.tesseract_POST,
+            '/uppercase': self.uppercase_POST,
         }
 
         try:
@@ -24,7 +30,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         except KeyError:
             self.send_error(code=404)
 
-    def selfupgrade(self):
+    def selfupgrade_POST(self):
         pull = subprocess.run(['git', 'pull'], capture_output=True)
         self.send_response(code=200)
         self.send_header(keyword='Content-Type', value='text/plain')
@@ -38,7 +44,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(b'Restarting...')
             sys.exit(0)
 
-    def uppercase(self):
+    def tesseract_POST(self):
+        self.send_response(code=501)
+
+    def uppercase_POST(self):
         if self.headers['Content-Type'] != 'application/json':
             self.send_error(code=415)
             return
@@ -55,7 +64,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(response)
 
-    def do_GET_HEAD(self, only_head: bool):
+    def tesseract_GET_HEAD(self, only_head: bool):
+        self.send_response(code=404)
+
+    def root_GET_HEAD(self, only_head: bool):
         self.send_response(code=200)
         self.send_header(keyword='Content-Type', value='text/html')
         self.end_headers()
@@ -69,6 +81,19 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         <body>This is just to confirm you've reached the server.</body>
         </html>
         ''')
+
+    def do_GET_HEAD(self, only_head: bool):
+        path, query = self.path_query()
+
+        handlers = {
+            '/tesseract': self.tesseract_GET_HEAD,
+            '/': self.root_GET_HEAD,
+        }
+
+        try:
+            handlers[path](only_head=only_head)
+        except KeyError:
+            self.send_error(code=404)
 
     def do_GET(self):
         self.do_GET_HEAD(only_head=False)
