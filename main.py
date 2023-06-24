@@ -15,14 +15,28 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             query = ''
 
         handlers = {
-            '/uppercase': self.uppercase,
             '/selfupgrade': self.selfupgrade,
+            '/uppercase': self.uppercase,
         }
 
         try:
             handlers[path]()
         except KeyError:
             self.send_error(code=404)
+
+    def selfupgrade(self):
+        pull = subprocess.run(['git', 'pull'], capture_output=True)
+        self.send_response(code=200)
+        self.send_header(keyword='Content-Type', value='text/plain')
+        self.end_headers()
+        self.wfile.write(f'Exit code: {pull.returncode}\n'.encode('utf-8'))
+        self.wfile.write(f'stdout:\n{pull.stdout}\n'.encode('utf-8'))
+        self.wfile.write(f'stderr:\n{pull.stderr}\n'.encode('utf-8'))
+        if pull.stdout == b'Already up to date.\n':
+            self.wfile.write(b'Nothing to do.')
+        else:
+            self.wfile.write(b'Restarting...')
+            sys.exit(0)
 
     def uppercase(self):
         if self.headers['Content-Type'] != 'application/json':
@@ -40,20 +54,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_header(keyword='Content-Length', value=str(len(response)))
         self.end_headers()
         self.wfile.write(response)
-
-    def selfupgrade(self):
-        pull = subprocess.run(['git', 'pull'], capture_output=True)
-        self.send_response(code=200)
-        self.send_header(keyword='Content-Type', value='text/plain')
-        self.end_headers()
-        self.wfile.write(f'Exit code: {pull.returncode}\n'.encode('utf-8'))
-        self.wfile.write(f'stdout:\n{pull.stdout}\n'.encode('utf-8'))
-        self.wfile.write(f'stderr:\n{pull.stderr}\n'.encode('utf-8'))
-        if pull.stdout == b'Already up to date.\n':
-            self.wfile.write(b'Nothing to do.')
-        else:
-            self.wfile.write(b'Restarting...')
-            sys.exit(0)
 
     def do_GET_HEAD(self, only_head: bool):
         self.send_response(code=200)
