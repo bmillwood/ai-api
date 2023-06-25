@@ -72,7 +72,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
         handlers = {
             '/selfupgrade': self.selfupgrade_POST,
-            '/tesseract': self.tesseract_POST,
+            '/imagetotext': self.imagetotext_POST,
             '/uppercase': self.uppercase_POST,
         }
 
@@ -113,7 +113,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
         return v
 
-    def tesseract_POST(self):
+    def imagetotext_POST(self):
         boundary = self.parse_multipart_content_type()
         if boundary is None:
             return
@@ -144,7 +144,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             with doc.tag('head'):
                 doc.stag('meta', charset='UTF-8')
                 with doc.tag('title'):
-                    doc.text('Tesseract API')
+                    doc.text('Image-to-text API')
                 with doc.tag('style', type='text/css'):
                     doc.text('table, td { border: 1px solid black; }')
 
@@ -199,7 +199,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(response)
 
-    def tesseract_GET_HEAD(self, only_head: bool):
+    def imagetotext_GET_HEAD(self, only_head: bool):
         self.send_response(code=200)
         self.send_header(keyword='Content-Type', value='text/html')
         self.end_headers()
@@ -213,19 +213,20 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             with doc.tag('head'):
                 doc.stag('meta', charset='UTF-8')
                 with doc.tag('title'):
-                    doc.text('Tesseract API')
+                    doc.text('Image-to-text API')
 
             with doc.tag('body'):
                 with doc.tag('h1'):
-                    doc.text('Tesseract API')
+                    doc.text('Image-to-text API')
                 with doc.tag('p'):
+                    doc.text("Submit an image file and I'll try to read it using ")
                     with doc.tag('a', href='https://tesseract-ocr.github.io/'):
                         doc.text('Tesseract')
-                    doc.text(' is a tool for reading text out of images. Try it!')
+                    doc.text('.')
                 with doc.tag('form', method='POST', enctype='multipart/form-data'):
                     doc.stag('input', name='image', type='file')
                     doc.stag('br')
-                    doc.text('Confidence threshold: ')
+                    doc.text('Confidence threshold (higher = more, worse text): ')
                     doc.stag('input', name='conf', type='number', min=0, max=100, value=80)
                     doc.stag('br')
                     doc.stag('input', type='submit')
@@ -251,7 +252,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         path, query = self.path_query()
 
         handlers = {
-            '/tesseract': self.tesseract_GET_HEAD,
+            '/imagetotext': self.imagetotext_GET_HEAD,
             '/': self.root_GET_HEAD,
         }
 
