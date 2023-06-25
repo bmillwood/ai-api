@@ -6,10 +6,54 @@ import os
 import subprocess
 import sys
 import tempfile
+import typing
 
 import multipart
 import pytesseract
 import yattag
+
+class OcrBox(typing.NamedTuple):
+    children: dict[int, 'OcrBox']
+    left: int
+    top: int
+    width: int
+    height: int
+    conf: float
+    text: str
+
+def values_sorted_by_keys(d):
+    return [v for (k, v) in sorted(d.items())]
+
+def ocr_box_tree(data_by_header) -> dict[int, OcrBox]:
+    pages: dict[int, OcrBox] = {}
+    for item in data_by_header:
+        box = OcrBox(
+            children={},
+            left=int(item['left']),
+            top=int(item['top']),
+            width=int(item['width']),
+            height=int(item['height']),
+            conf=float(item['conf']),
+            text=item['text'],
+        )
+        level = int(item['level'])
+        page_num = int(item['page_num'])
+        page = pages.setdefault(int(item['page_num']), box)
+        if level == 1:
+            continue
+        block = page.children.setdefault(int(item['block_num']), box)
+        if level == 2:
+            continue
+        par = block.children.setdefault(int(item['par_num']), box)
+        if level == 3:
+            continue
+        line = par.children.setdefault(int(item['line_num']), box)
+        if level == 4:
+            continue
+        line.children[int(item['word_num'])] = box
+
+    return pages
+
 
 class RequestHandler(http.server.BaseHTTPRequestHandler):
     def path_query(self):
@@ -82,10 +126,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write(image.raw)
-            data = [
-                line.split('\t')
-                for line in pytesseract.image_to_data(tmp.name).splitlines()
-            ]
+            data_raw = pytesseract.image_to_data(tmp.name)
+
+        data_fields = [line.split('\t') for line in data_raw.splitlines()]
+        data_by_header = [dict(zip(data_fields[0], line)) for line in data_fields[1:]]
+        box_tree = ocr_box_tree(data_by_header)
 
         self.send_response(code=200)
         self.send_header(keyword='Content-Type', value='text/html')
@@ -102,14 +147,32 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     doc.text('table, td { border: 1px solid black; }')
 
             with doc.tag('body'):
+                for page in values_sorted_by_keys(box_tree):
+                    with doc.tag(
+                            'div',
+                            style=f'position: relative; width: {page.width}px; height: {page.height}px'
+                        ):
+                        for block in values_sorted_by_keys(page.children):
+                            with doc.tag(
+                                    'textarea',
+                                    style=f'position: absolute; left: {block.left}px; top: {block.top}px; width: {block.width}px; height: {block.height}px',
+                                ):
+                                for par in values_sorted_by_keys(block.children):
+                                    for line in values_sorted_by_keys(par.children):
+                                        doc.text(' '.join(
+                                            word.text
+                                            for word in values_sorted_by_keys(line.children)
+                                        ))
+                                        doc.text('\n')
+
                 with doc.tag('table'):
                     with doc.tag('thead'):
                         with doc.tag('tr'):
-                            for header in data[0]:
+                            for header in data_fields[0]:
                                 with doc.tag('td'):
                                     doc.text(header)
                     with doc.tag('tbody'):
-                        for line in data[1:]:
+                        for line in data_fields[1:]:
                             with doc.tag('tr'):
                                 for field in line:
                                     with doc.tag('td'):
@@ -190,6 +253,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
     def do_HEAD(self):
         self.do_GET_HEAD(only_head=True)
 
-port = int(os.environ.get('PORT', '8080'))
-httpd = http.server.HTTPServer(('', port), RequestHandler)
-httpd.serve_forever()
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', '8080'))
+    httpd = http.server.HTTPServer(('', port), RequestHandler)
+    httpd.serve_forever()
