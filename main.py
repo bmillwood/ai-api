@@ -213,6 +213,12 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     doc.text('Tesseract API')
 
             with doc.tag('body'):
+                with doc.tag('h1'):
+                    doc.text('Tesseract API')
+                with doc.tag('p'):
+                    with doc.tag('a', href='https://tesseract-ocr.github.io/'):
+                        doc.text('Tesseract')
+                    doc.text(' is a tool for reading text out of images. Try it!')
                 with doc.tag('form', method='POST', enctype='multipart/form-data'):
                     doc.stag('input', name='image', type='file')
                     doc.stag('input', type='submit')
