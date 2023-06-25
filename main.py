@@ -222,6 +222,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     doc.text("Submit an image file and I'll try to read it using ")
                     with doc.tag('a', href='https://tesseract-ocr.github.io/'):
                         doc.text('Tesseract')
+                    doc.text('. Code is on ')
+                    with doc.tag('a', href='https://github.com/bmillwood/misc-api'):
+                        doc.text('GitHub')
                     doc.text('.')
                 with doc.tag('form', method='POST', enctype='multipart/form-data'):
                     doc.stag('input', name='image', type='file')
