@@ -123,6 +123,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             content_length=int(self.headers['Content-Length']),
         )
         (image,) = mp.get_all(name='image')
+        (confidence_threshold_part,) = mp.get_all('conf')
+        confidence_threshold = int(confidence_threshold_part.value)
 
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write(image.raw)
@@ -162,6 +164,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                                         doc.text(' '.join(
                                             word.text
                                             for word in values_sorted_by_keys(line.children)
+                                            if word.conf >= confidence_threshold
                                         ))
                                         doc.text('\n')
 
@@ -221,6 +224,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     doc.text(' is a tool for reading text out of images. Try it!')
                 with doc.tag('form', method='POST', enctype='multipart/form-data'):
                     doc.stag('input', name='image', type='file')
+                    doc.stag('br')
+                    doc.text('Confidence threshold: ')
+                    doc.stag('input', name='conf', type='number', min=0, max=100, value=80)
+                    doc.stag('br')
                     doc.stag('input', type='submit')
 
         self.wfile.write(doc.getvalue().encode('utf-8'))
